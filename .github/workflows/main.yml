@@ -9,26 +9,28 @@ jobs:
 
     steps:
 
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
+      - name: Install Android SDK
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools"
-          sdkmanager "platforms;android-35"
-          sdkmanager "build-tools;35.0.0"
+          export ANDROID_HOME="$ANDROID_SDK_ROOT"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 
-      - name: Create project folders
+          yes | sdkmanager --licenses || true
+
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Create folders
         run: |
           mkdir -p ExeRunner/app/src/main/java/com/example/exerunner
           mkdir -p ExeRunner/app/src/main/res/layout
@@ -57,7 +59,7 @@ jobs:
           include(":app")
           EOF
 
-      - name: Create root build.gradle.kts
+      - name: Create build.gradle.kts
         run: |
           cat > ExeRunner/build.gradle.kts <<'EOF'
           plugins {
@@ -139,12 +141,9 @@ jobs:
           cat > ExeRunner/app/src/main/res/values/styles.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-
-              <style name="Theme.ExeRunner" parent="Theme.Material3.DayNight.NoActionBar">
-                  <item name="android:fontFamily">sans</item>
-                  <item name="android:windowActionModeOverlay">true</item>
+              <style name="Theme.ExeRunner"
+                  parent="Theme.Material3.DayNight.NoActionBar">
               </style>
-
           </resources>
           EOF
 
@@ -239,7 +238,7 @@ jobs:
                       } else {
 
                           binding.statusText.text =
-                              "EXE selected. Windows compatibility runtime is required."
+                              "EXE selected. Windows compatibility runtime required."
 
                       }
                   }
@@ -251,7 +250,6 @@ jobs:
                   resultCode: Int,
                   data: Intent?
               ) {
-
                   super.onActivityResult(
                       requestCode,
                       resultCode,
