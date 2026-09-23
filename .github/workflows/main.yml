@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Java
@@ -20,8 +21,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK
+      - name: Install Android SDK packages
         run: |
+          yes | sdkmanager --licenses || true
           sdkmanager "platform-tools"
           sdkmanager "platforms;android-35"
           sdkmanager "build-tools;35.0.0"
@@ -137,10 +139,12 @@ jobs:
           cat > ExeRunner/app/src/main/res/values/styles.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
+
               <style name="Theme.ExeRunner" parent="Theme.Material3.DayNight.NoActionBar">
                   <item name="android:fontFamily">sans</item>
                   <item name="android:windowActionModeOverlay">true</item>
               </style>
+
           </resources>
           EOF
 
@@ -148,7 +152,9 @@ jobs:
         run: |
           cat > ExeRunner/app/src/main/res/layout/activity_main.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+          <LinearLayout
+              xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:orientation="vertical"
@@ -211,6 +217,7 @@ jobs:
                   setContentView(binding.root)
 
                   binding.pickButton.setOnClickListener {
+
                       val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                           type = "*/*"
                           addCategory(Intent.CATEGORY_OPENABLE)
@@ -220,15 +227,20 @@ jobs:
                   }
 
                   binding.runButton.setOnClickListener {
+
                       if (selectedFile == null) {
+
                           Toast.makeText(
                               this,
                               "Choose an EXE first.",
                               Toast.LENGTH_SHORT
                           ).show()
+
                       } else {
+
                           binding.statusText.text =
-                              "EXE selected. A Windows compatibility runtime is still needed."
+                              "EXE selected. Windows compatibility runtime is required."
+
                       }
                   }
               }
@@ -239,9 +251,16 @@ jobs:
                   resultCode: Int,
                   data: Intent?
               ) {
-                  super.onActivityResult(requestCode, resultCode, data)
 
-                  if (requestCode == 100 && resultCode == Activity.RESULT_OK) {
+                  super.onActivityResult(
+                      requestCode,
+                      resultCode,
+                      data
+                  )
+
+                  if (requestCode == 100 &&
+                      resultCode == Activity.RESULT_OK) {
+
                       selectedFile = data?.data
 
                       binding.statusText.text =
@@ -252,6 +271,11 @@ jobs:
               }
           }
           EOF
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
 
       - name: Build APK
         working-directory: ExeRunner
