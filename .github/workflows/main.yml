@@ -11,12 +11,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create Android project
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
         run: |
-          mkdir -p ExeRunner/app/src/main/java/com/exerunner/app
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.0"
+
+      - name: Create project folders
+        run: |
+          mkdir -p ExeRunner/app/src/main/java/com/example/exerunner
           mkdir -p ExeRunner/app/src/main/res/layout
           mkdir -p ExeRunner/app/src/main/res/values
 
+      - name: Create settings.gradle.kts
+        run: |
           cat > ExeRunner/settings.gradle.kts <<'EOF'
           pluginManagement {
               repositories {
@@ -38,6 +55,8 @@ jobs:
           include(":app")
           EOF
 
+      - name: Create root build.gradle.kts
+        run: |
           cat > ExeRunner/build.gradle.kts <<'EOF'
           plugins {
               id("com.android.application") version "8.7.3" apply false
@@ -45,6 +64,16 @@ jobs:
           }
           EOF
 
+      - name: Create gradle.properties
+        run: |
+          cat > ExeRunner/gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          kotlin.code.style=official
+          EOF
+
+      - name: Create app build.gradle.kts
+        run: |
           cat > ExeRunner/app/build.gradle.kts <<'EOF'
           plugins {
               id("com.android.application")
@@ -52,11 +81,11 @@ jobs:
           }
 
           android {
-              namespace = "com.exerunner.app"
+              namespace = "com.example.exerunner"
               compileSdk = 35
 
               defaultConfig {
-                  applicationId = "com.exerunner.app"
+                  applicationId = "com.example.exerunner"
                   minSdk = 26
                   targetSdk = 35
                   versionCode = 1
@@ -71,25 +100,29 @@ jobs:
           dependencies {
               implementation("androidx.core:core-ktx:1.15.0")
               implementation("androidx.appcompat:appcompat:1.7.0")
-              implementation("com.google.android.material:material:1.12.0")
               implementation("androidx.activity:activity-ktx:1.10.0")
+              implementation("com.google.android.material:material:1.12.0")
           }
           EOF
 
+      - name: Create AndroidManifest.xml
+        run: |
           cat > ExeRunner/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
               <application
-                  android:theme="@style/Theme.ExeRunner"
-                  android:label="EXE Runner">
+                  android:allowBackup="true"
+                  android:label="EXE Runner"
+                  android:theme="@style/Theme.ExeRunner">
 
                   <activity
                       android:name=".MainActivity"
                       android:exported="true">
 
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
 
                   </activity>
@@ -99,221 +132,131 @@ jobs:
           </manifest>
           EOF
 
+      - name: Create styles.xml
+        run: |
           cat > ExeRunner/app/src/main/res/values/styles.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
           <resources>
-
-              <style name="Theme.ExeRunner"
-                  parent="Theme.Material3.DayNight.NoActionBar">
-
+              <style name="Theme.ExeRunner" parent="Theme.Material3.DayNight.NoActionBar">
                   <item name="android:fontFamily">sans</item>
-                  <item name="android:statusBarColor">#101116</item>
-                  <item name="android:navigationBarColor">#101116</item>
-
+                  <item name="android:windowActionModeOverlay">true</item>
               </style>
-
           </resources>
           EOF
 
+      - name: Create activity_main.xml
+        run: |
           cat > ExeRunner/app/src/main/res/layout/activity_main.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-
-          <ScrollView
-              xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto"
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:background="#101116">
+              android:orientation="vertical"
+              android:padding="24dp">
 
-              <LinearLayout
+              <TextView
                   android:layout_width="match_parent"
                   android:layout_height="wrap_content"
-                  android:orientation="vertical"
-                  android:padding="28dp">
+                  android:text="EXE Runner"
+                  android:textSize="30sp"
+                  android:textStyle="bold" />
 
-                  <TextView
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="EXE Runner"
-                      android:textColor="#FFFFFF"
-                      android:textSize="32sp"
-                      android:textStyle="bold"/>
+              <TextView
+                  android:id="@+id/statusText"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="20dp"
+                  android:text="Choose a Windows EXE file."
+                  android:textSize="18sp" />
 
-                  <TextView
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:layout_marginTop="6dp"
-                      android:text="Windows programs on your Chromebook"
-                      android:textColor="#A8ACB8"
-                      android:textSize="15sp"/>
+              <Button
+                  android:id="@+id/pickButton"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="24dp"
+                  android:text="Choose EXE" />
 
-                  <com.google.android.material.card.MaterialCardView
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:layout_marginTop="28dp"
-                      app:cardBackgroundColor="#191B23"
-                      app:cardCornerRadius="18dp">
+              <Button
+                  android:id="@+id/runButton"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="12dp"
+                  android:text="RUN EXE" />
 
-                      <LinearLayout
-                          android:layout_width="match_parent"
-                          android:layout_height="wrap_content"
-                          android:orientation="vertical"
-                          android:padding="20dp">
-
-                          <TextView
-                              android:id="@+id/fileName"
-                              android:layout_width="match_parent"
-                              android:layout_height="wrap_content"
-                              android:text="No EXE selected"
-                              android:textColor="#FFFFFF"
-                              android:textSize="18sp"
-                              android:textStyle="bold"/>
-
-                          <TextView
-                              android:id="@+id/fileInfo"
-                              android:layout_width="match_parent"
-                              android:layout_height="wrap_content"
-                              android:layout_marginTop="8dp"
-                              android:text="Choose a Windows .exe file to begin."
-                              android:textColor="#A8ACB8"
-                              android:textSize="14sp"/>
-
-                      </LinearLayout>
-
-                  </com.google.android.material.card.MaterialCardView>
-
-                  <com.google.android.material.button.MaterialButton
-                      android:id="@+id/selectButton"
-                      android:layout_width="match_parent"
-                      android:layout_height="60dp"
-                      android:layout_marginTop="20dp"
-                      android:text="SELECT EXE"
-                      android:textSize="16sp"/>
-
-                  <com.google.android.material.button.MaterialButton
-                      android:id="@+id/runButton"
-                      android:layout_width="match_parent"
-                      android:layout_height="60dp"
-                      android:layout_marginTop="12dp"
-                      android:enabled="false"
-                      android:text="RUN"
-                      android:textSize="16sp"/>
-
-                  <TextView
-                      android:id="@+id/status"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:layout_marginTop="24dp"
-                      android:text="Status: Waiting for an EXE"
-                      android:textColor="#7FE29B"
-                      android:textSize="14sp"/>
-
-              </LinearLayout>
-
-          </ScrollView>
+          </LinearLayout>
           EOF
 
-          cat > ExeRunner/app/src/main/java/com/exerunner/app/MainActivity.kt <<'EOF'
-          package com.exerunner.app
+      - name: Create MainActivity.kt
+        run: |
+          cat > ExeRunner/app/src/main/java/com/example/exerunner/MainActivity.kt <<'EOF'
+          package com.example.exerunner
 
+          import android.app.Activity
+          import android.content.Intent
           import android.net.Uri
           import android.os.Bundle
-          import android.provider.OpenableColumns
           import android.widget.Toast
-          import androidx.activity.result.contract.ActivityResultContracts
           import androidx.appcompat.app.AppCompatActivity
-          import com.exerunner.app.databinding.ActivityMainBinding
+          import com.example.exerunner.databinding.ActivityMainBinding
 
           class MainActivity : AppCompatActivity() {
 
               private lateinit var binding: ActivityMainBinding
-              private var selectedUri: Uri? = null
-
-              private val pickExe =
-                  registerForActivityResult(
-                      ActivityResultContracts.OpenDocument()
-                  ) { uri ->
-
-                      if (uri == null) return@registerForActivityResult
-
-                      selectedUri = uri
-
-                      binding.fileName.text =
-                          getFileName(uri) ?: "Selected EXE"
-
-                      binding.fileInfo.text =
-                          "Windows executable selected."
-
-                      binding.runButton.isEnabled = true
-
-                      binding.status.text =
-                          "Status: EXE ready"
-                  }
+              private var selectedFile: Uri? = null
 
               override fun onCreate(savedInstanceState: Bundle?) {
-
                   super.onCreate(savedInstanceState)
 
-                  binding =
-                      ActivityMainBinding.inflate(layoutInflater)
-
+                  binding = ActivityMainBinding.inflate(layoutInflater)
                   setContentView(binding.root)
 
-                  binding.selectButton.setOnClickListener {
+                  binding.pickButton.setOnClickListener {
+                      val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                          type = "*/*"
+                          addCategory(Intent.CATEGORY_OPENABLE)
+                      }
 
-                      pickExe.launch(
-                          arrayOf(
-                              "application/octet-stream",
-                              "*/*"
-                          )
-                      )
+                      startActivityForResult(intent, 100)
                   }
 
                   binding.runButton.setOnClickListener {
-
-                      binding.status.text =
-                          "Status: Compatibility runtime required"
-
-                      Toast.makeText(
-                          this,
-                          "EXE selected. A Windows compatibility runtime is needed to run it.",
-                          Toast.LENGTH_LONG
-                      ).show()
+                      if (selectedFile == null) {
+                          Toast.makeText(
+                              this,
+                              "Choose an EXE first.",
+                              Toast.LENGTH_SHORT
+                          ).show()
+                      } else {
+                          binding.statusText.text =
+                              "EXE selected. A Windows compatibility runtime is still needed."
+                      }
                   }
               }
 
-              private fun getFileName(uri: Uri): String? {
+              @Deprecated("Deprecated in Android API")
+              override fun onActivityResult(
+                  requestCode: Int,
+                  resultCode: Int,
+                  data: Intent?
+              ) {
+                  super.onActivityResult(requestCode, resultCode, data)
 
-                  contentResolver.query(
-                      uri,
-                      null,
-                      null,
-                      null,
-                      null
-                  )?.use { cursor ->
+                  if (requestCode == 100 && resultCode == Activity.RESULT_OK) {
+                      selectedFile = data?.data
 
-                      val index =
-                          cursor.getColumnIndex(
-                              OpenableColumns.DISPLAY_NAME
-                          )
-
-                      if (index >= 0 && cursor.moveToFirst()) {
-                          return cursor.getString(index)
-                      }
+                      binding.statusText.text =
+                          selectedFile?.let {
+                              "Selected: ${it.lastPathSegment}"
+                          } ?: "No file selected."
                   }
-
-                  return uri.lastPathSegment
               }
           }
           EOF
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.11.1"
-
       - name: Build APK
         working-directory: ExeRunner
-        run: gradle assembleDebug --no-daemon
+        run: |
+          gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
